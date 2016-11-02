@@ -2,7 +2,7 @@
 * @Author: anchen
 * @Date:   2016-11-02 15:13:51
 * @Last Modified by:   anchen
-* @Last Modified time: 2016-11-02 18:02:01
+* @Last Modified time: 2016-11-02 22:54:03
 */
 #include <iostream>
 #include <stdio.h>
@@ -83,10 +83,11 @@ void Server::selectModeSet(void)
 void *Server::clientRequestHandle(void *obj_temp)
 {
     Server *obj = (Server *)obj_temp;
+    int n_ready;
     while(1)
     {
-        // obj->rset = obj->allset;
-        // int n_ready = select(obj->maxfd+1 , &obj->rset , NULL , NULL , NULL);
+        obj->rset = obj->allset;
+        n_ready = select(obj->maxfd+1 , &obj->rset , NULL , NULL , NULL);
         for(int i = 0; i <=obj->index_max; i++)
         {
             int sockfd = obj->client[i];
@@ -112,8 +113,8 @@ void *Server::clientRequestHandle(void *obj_temp)
                         break;
                     }
                 }
-               // if(--n_ready <= 0)
-               //      break;
+                if(--n_ready <= 0)
+                    break;
             }
         }
     }
@@ -124,42 +125,28 @@ void *Server::clientLinkHandle(void *obj_temp)
     Server *obj = (Server *)obj_temp;
     while(1)
     {
-        obj->rset = obj->allset;
-        int n_ready = select(obj->maxfd+1 , &obj->rset , NULL , NULL , NULL);
-        if(FD_ISSET(obj->listenfd , &obj->rset))
+        struct sockaddr_in cliaddr;
+        socklen_t clilen = sizeof(cliaddr);
+        if((obj->connfd = accept(obj->listenfd , (struct sockaddr *)&cliaddr , &clilen)) < 0)
         {
-            struct sockaddr_in cliaddr;
-            socklen_t clilen = sizeof(cliaddr);
-            printf("\naccpet connection~\n");
-
-            if((obj->connfd = accept(obj->listenfd , (struct sockaddr *)&cliaddr , &clilen)) < 0)
+            perror("accept error.\n");
+            exit(1);
+        }   
+        printf("accpet a new client: %s:%d\n", inet_ntoa(cliaddr.sin_addr) , cliaddr.sin_port);
+        for(obj->index = 0 ; obj->index < FD_SETSIZE ; ++obj->index)
+        {
+            if(obj->client[obj->index] < 0)
             {
-                perror("accept error.\n");
-                exit(1);
-            }   
-
-            printf("accpet a new client: %s:%d\n", inet_ntoa(cliaddr.sin_addr) , cliaddr.sin_port);
-
-            for(obj->index = 0 ; obj->index < FD_SETSIZE ; ++obj->index)
-            {
-                if(obj->client[obj->index] < 0)
-                {
-                    obj->client[obj->index] = obj->connfd;
-                    break;
-                }
+                obj->client[obj->index] = obj->connfd;
+                break;
             }
-            FD_SET(obj->connfd , &obj->allset);
-            if(obj->connfd > obj->maxfd)
-                obj->maxfd = obj->connfd;
-
-            if(obj->index > obj->index_max)
-                obj->index_max = obj->index;
-
-            printf("index_max = %d\n", obj->index_max);
-
-            // if(--n_ready < 0)
-            //     continue;
         }
+        FD_SET(obj->connfd , &obj->allset);
+        if(obj->connfd > obj->maxfd)
+            obj->maxfd = obj->connfd;
+        if(obj->index > obj->index_max)
+            obj->index_max = obj->index;
+        printf("index_max = %d\n", obj->index_max);
     }
 }
 
@@ -169,7 +156,7 @@ int main()
     server.selectModeSet();
     while(1)
     {
-   
+
     }
     return 0;
-}
+} 
