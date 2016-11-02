@@ -2,7 +2,7 @@
 * @Author: anchen
 * @Date:   2016-11-02 15:13:51
 * @Last Modified by:   anchen
-* @Last Modified time: 2016-11-02 22:54:03
+* @Last Modified time: 2016-11-02 23:14:17
 */
 #include <iostream>
 #include <stdio.h>
@@ -93,7 +93,6 @@ void *Server::clientRequestHandle(void *obj_temp)
             int sockfd = obj->client[i];
             if(FD_ISSET(sockfd , &obj->rset))
             {
-                printf("\nreading the socket~~~ \n");
                 char buf[MAX_LINE];
                 bzero(buf , MAX_LINE);
                 ssize_t n;
@@ -102,6 +101,7 @@ void *Server::clientRequestHandle(void *obj_temp)
                     close(sockfd);
                     FD_CLR(sockfd , &obj->allset);
                     obj->client[i] = -1;
+                    printf("client[%d] is out!\n", i);
                 }
                 else
                 {
